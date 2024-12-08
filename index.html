@@ -13,12 +13,6 @@
             margin: 0;
             padding: 0;
         }
-        #fileInput {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            z-index: 10;
-        }
         #sliders {
             display: flex;
             flex-direction: column;
@@ -43,12 +37,29 @@
         #statistics {
             text-align: center;
             font-size: 1.2em;
-            margin-top: 20px;
+            margin: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            width: 100%;
+            max-width: 1200px;
+            margin-top: 10px;
+        }
+        .stat-item {
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
     </style>
 </head>
 <body>
-    <input type="file" id="fileInput" accept=".csv" />
     <div id="sliders">
         <div class="slider-container">
             <label for="mdMin">MD Min:</label>
@@ -66,15 +77,34 @@
             <label for="endDate">Data Fine:</label>
             <input type="date" id="endDate" />
         </div>
-            <div id="dateRange" style="text-align: center; font-size: 1.2em; margin-top: 10px;">
-        Data min: <span id="minDate">N/A</span> - Data max: <span id="maxDate">N/A</span>
-    </div>
+        <div id="dateRange" style="text-align: center; font-size: 1.2em; margin-top: 10px;">
+            Data min: <span id="minDate">N/A</span> - Data max: <span id="maxDate">N/A</span>
+        </div>
     </div>
     <div id="plot"></div>
-    <div id="statistics"></div>
+    <div id="statistics">
+        <div id="total-count"></div>
+        <div class="stats-grid" id="magnitude-stats"></div>
+    </div>
 
     <script>
-        document.getElementById('fileInput').addEventListener('change', updatePlot);
+        const csvUrl = ('https://terremoti.ov.ingv.it/gossip/flegrei/events.csv');
+
+        // Load CSV data automatically when page loads
+        window.addEventListener('load', () => {
+            Papa.parse(csvUrl, {
+                download: true,
+                header: true,
+                dynamicTyping: true,
+                complete: function(results) {
+                    const data = results.data.filter(row => row.Time);
+                    setAbsoluteDateRange(data);
+                    const filteredPoints = parseAndFilterCSV(data);
+                    plotPoints(filteredPoints);
+                }
+            });
+        });
+
         document.getElementById('mdMin').addEventListener('input', function() {
             document.getElementById('mdMinValue').textContent = parseFloat(this.value).toFixed(1);
             updatePlot();
@@ -86,20 +116,15 @@
         document.getElementById('startDate').addEventListener('change', updatePlot);
         document.getElementById('endDate').addEventListener('change', updatePlot);
 
-                function updatePlot() {
-            const file = document.getElementById('fileInput').files[0];
-            if (!file) return;
-
-            Papa.parse(file, {
+        function updatePlot() {
+            Papa.parse(csvUrl, {
+                download: true,
                 header: true,
                 dynamicTyping: true,
                 complete: function(results) {
                     const data = results.data.filter(row => row.Time);
-                    setAbsoluteDateRange(data); // Calcola e mostra date min e max assolute
-
                     const filteredPoints = parseAndFilterCSV(data);
                     plotPoints(filteredPoints);
-                    updateStatistics(filteredPoints.length);
                 }
             });
         }
@@ -151,7 +176,7 @@
                     md: md,
                     time: time,
                     color: depth,
-                    size: Math.exp(md)/2,
+                    size: Math.exp(md)/1.5,
                     formattedTime: time.toISOString().split('T')[0]
                 };
             });
@@ -217,12 +242,43 @@
             };
 
             Plotly.newPlot('plot', [trace], layout);
+            updateStatistics(points.length, points); // Update to pass points array
         }
 
-        function updateStatistics(count) {
-            document.getElementById('statistics').textContent = `Numero di terremoti filtrati: ${count}`;
+        function updateStatistics(count, points) {
+            // Update total count
+            document.getElementById('total-count').textContent = `Numero di terremoti filtrati: ${count}`;
+
+            // Calculate magnitude ranges
+            const magnitudeRanges = [
+                { min: 0, max: 1, label: 'MD ≥ 0 e < 1' },
+                { min: 1, max: 2, label: 'MD ≥ 1 e < 2' },
+                { min: 2, max: 3, label: 'MD ≥ 2 e < 3' },
+                { min: 3, max: 4, label: 'MD ≥ 3 e < 4' },
+                { min: 4, max: 5, label: 'MD ≥ 4 e < 5' }
+            ];
+
+            const statsContainer = document.getElementById('magnitude-stats');
+            statsContainer.innerHTML = '';
+
+            magnitudeRanges.forEach(range => {
+                const count = points.filter(point =>
+                    point.md >= range.min && point.md < range.max
+                ).length;
+
+                const percentage = count > 0 ? ((count / points.length) * 100).toFixed(1) : 0;
+
+                const statDiv = document.createElement('div');
+                statDiv.className = 'stat-item';
+                statDiv.innerHTML = `
+                    <div>${range.label}</div>
+                    <div>Numero: ${count}</div>
+                    <div>Percentuale: ${percentage}%</div>
+                `;
+
+                statsContainer.appendChild(statDiv);
+            });
         }
     </script>
 </body>
 </html>
-
