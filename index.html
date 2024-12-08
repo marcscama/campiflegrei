@@ -88,7 +88,7 @@
     </div>
 
     <script>
-        const csvUrl = ('https://terremoti.ov.ingv.it/gossip/flegrei/events.csv');
+        const csvUrl = 'https://corsproxy.io/?' + encodeURIComponent('https://terremoti.ov.ingv.it/gossip/flegrei/events.csv');
 
         // Load CSV data automatically when page loads
         window.addEventListener('load', () => {
