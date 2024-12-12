@@ -88,7 +88,13 @@
     </div>
 
     <script>
-        const csvUrl = ('https://terremoti.ov.ingv.it/gossip/flegrei/events.csv');
+        const csvUrl = 
+            const options = {method: 'GET'};
+
+                            fetch('https://terremoti.ov.ingv.it/gossip/flegrei/events.csv', options)
+                              .then(response => response.json())
+                              .then(response => console.log(response))
+                              .catch(err => console.error(err));
 
         // Load CSV data automatically when page loads
         window.addEventListener('load', () => {
